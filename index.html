@@ -1,20 +1,35 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>To-do App</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+  <title>Game Dò Mìn</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
-  <div class="container">
-    <button id="toggle-mode">🌙 Dark Mode</button>
-    <h1>📋 Danh sách công việc</h1>
-    <div class="input-section">
-      <input type="text" id="task-input" placeholder="Nhập công việc..." />
-      <button id="add-task">Thêm</button>
-    </div>
-    <ul id="task-list"></ul>
+  <h1>Game Dò Mìn</h1>
+
+  <!-- Cấu hình bàn cờ -->
+  <div id="config">
+    <label>Chiều ngang: <input type="number" id="cols" value="8"></label>
+    <label>Chiều dọc: <input type="number" id="rows" value="8"></label>
+    <label>Cấp độ: 
+      <select id="level">
+        <option value="1">Dễ</option>
+        <option value="2">Trung bình</option>
+        <option value="3">Khó</option>
+      </select>
+    </label>
+    <button id="start">Bắt đầu chơi</button>
+  </div>
+
+  <!-- Bàn cờ -->
+  <div id="game-board"></div>
+
+  <!-- Bảng điểm -->
+  <div id="scoreboard">
+    <h2>Top 10 Người chơi</h2>
+    <ol id="top-scores"></ol>
   </div>
 
   <script src="script.js"></script>

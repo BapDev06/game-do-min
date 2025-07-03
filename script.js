@@ -1,66 +1,134 @@
-// Lấy các phần tử HTML cần dùng
-const taskInput = document.getElementById("task-input");
-const addTaskBtn = document.getElementById("add-task");
-const taskList = document.getElementById("task-list");
+let board = [], rows = 8, cols = 8, mines = 10, level = 1;
+let revealedCount = 0, totalSafeCells = 0;
 
-// Hàm tạo một task mới trong danh sách
-function createTaskItem(taskText) {
-  const li = document.createElement("li");
-  li.className = "task-item";
+$('#start').click(function () {
+  rows = parseInt($('#rows').val());
+  cols = parseInt($('#cols').val());
+  level = parseInt($('#level').val());
 
-  const span = document.createElement("span");
-  span.textContent = taskText;
+  // Tính số mìn theo cấp độ
+  mines = Math.floor((rows * cols) * (0.1 * level));
+  totalSafeCells = rows * cols - mines;
+  revealedCount = 0;
 
-  const buttons = document.createElement("div");
+  generateBoard();
+});
 
-  const completeBtn = document.createElement("button");
-  completeBtn.textContent = "✔";
-  completeBtn.style.marginRight = "8px";
-  completeBtn.addEventListener("click", () => {
-    li.classList.toggle("completed");
-  });
+function generateBoard() {
+  $('#game-board').empty();
+  $('#game-board').css('grid-template-columns', `repeat(${cols}, 30px)`);
 
-  const deleteBtn = document.createElement("button");
-  deleteBtn.textContent = "🗑";
-  deleteBtn.addEventListener("click", () => {
-    li.remove();
-  });
-
-  buttons.appendChild(completeBtn);
-  buttons.appendChild(deleteBtn);
-
-  li.appendChild(span);
-  li.appendChild(buttons);
-
-  taskList.appendChild(li);
-}
-
-// Sự kiện khi click nút "Thêm"
-addTaskBtn.addEventListener("click", () => {
-  const taskText = taskInput.value.trim();
-  if (taskText !== "") {
-    createTaskItem(taskText);
-    taskInput.value = "";
-    taskInput.focus();
+  board = [];
+  for (let r = 0; r < rows; r++) {
+    board[r] = [];
+    for (let c = 0; c < cols; c++) {
+      board[r][c] = { mine: false, revealed: false, count: 0 };
+      const cell = $('<div class="cell"></div>');
+      cell.attr('data-row', r).attr('data-col', c);
+      $('#game-board').append(cell);
+    }
   }
-});
 
-const toggleModeBtn = document.getElementById("toggle-mode");
+  // Gán mìn
+  let placed = 0;
+  while (placed < mines) {
+    let r = Math.floor(Math.random() * rows);
+    let c = Math.floor(Math.random() * cols);
+    if (!board[r][c].mine) {
+      board[r][c].mine = true;
+      placed++;
+    }
+  }
 
-// Kiểm tra trạng thái dark mode đã lưu
-if (localStorage.getItem("mode") === "dark") {
-  document.body.classList.add("dark");
-  toggleModeBtn.textContent = "☀️ Light Mode";
+  // Tính số mìn xung quanh
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (!board[r][c].mine) {
+        board[r][c].count = countMinesAround(r, c);
+      }
+    }
+  }
+
+  $('.cell').on('click', handleClick);
 }
 
-// Xử lý khi nhấn nút
-toggleModeBtn.addEventListener("click", () => {
-  document.body.classList.toggle("dark");
-  const isDark = document.body.classList.contains("dark");
+function countMinesAround(r, c) {
+  let count = 0;
+  for (let i = -1; i <= 1; i++) {
+    for (let j = -1; j <= 1; j++) {
+      let nr = r + i, nc = c + j;
+      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && board[nr][nc].mine) {
+        count++;
+      }
+    }
+  }
+  return count;
+}
 
-  // Cập nhật text của nút
-  toggleModeBtn.textContent = isDark ? "☀️ Light Mode" : "🌙 Dark Mode";
+function handleClick() {
+  let r = $(this).data('row');
+  let c = $(this).data('col');
+  let cellData = board[r][c];
+  if (cellData.revealed) return;
 
-  // Lưu trạng thái vào localStorage
-  localStorage.setItem("mode", isDark ? "dark" : "light");
-});
+  cellData.revealed = true;
+  $(this).addClass('revealed');
+
+  if (cellData.mine) {
+    $(this).addClass('mine').text('💣');
+    alert('Bạn thua!');
+    $('.cell').off('click');
+    return;
+  }
+
+  revealedCount++;
+  if (cellData.count > 0) {
+    $(this).text(cellData.count);
+  } else {
+    $(this).text('');
+    revealAround(r, c);
+  }
+
+  if (revealedCount === totalSafeCells) {
+    alert('Bạn thắng!');
+    saveScore();
+    autoUpgrade();
+  }
+}
+
+function revealAround(r, c) {
+  for (let i = -1; i <= 1; i++) {
+    for (let j = -1; j <= 1; j++) {
+      let nr = r + i, nc = c + j;
+      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && !board[nr][nc].revealed) {
+        $(`.cell[data-row=${nr}][data-col=${nc}]`).trigger('click');
+      }
+    }
+  }
+}
+
+// Lưu điểm vào localStorage
+function saveScore() {
+  let scores = JSON.parse(localStorage.getItem('scores') || '[]');
+  let name = prompt('Nhập tên bạn:');
+  scores.push({ name: name, score: totalSafeCells });
+  scores.sort((a, b) => b.score - a.score);
+  scores = scores.slice(0, 10);
+  localStorage.setItem('scores', JSON.stringify(scores));
+  updateScoreboard();
+}
+
+function updateScoreboard() {
+  let scores = JSON.parse(localStorage.getItem('scores') || '[]');
+  $('#top-scores').empty();
+  scores.forEach(s => {
+    $('#top-scores').append(`<li>${s.name}: ${s.score}</li>`);
+  });
+}
+
+// Tự nâng cấp cấp độ
+function autoUpgrade() {
+  if (level < 3) {
+    $('#level').val(level + 1);
+  }
+}
