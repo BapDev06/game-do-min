@@ -1,35 +1,20 @@
-let board = [], rows = 8, cols = 8, mines = 10, level = 1;
-let revealedCount = 0, totalSafeCells = 0;
+let board = [];
+let timerInterval;
+let timer = 0;
+let gameOver = false;
+let currentLevel = 1;
 
-$('#start').click(function () {
-  rows = parseInt($('#rows').val());
-  cols = parseInt($('#cols').val());
-  level = parseInt($('#level').val());
+const levelMines = { 1: 10, 2: 20, 3: 30 };
 
-  // Tính số mìn theo cấp độ
-  mines = Math.floor((rows * cols) * (0.1 * level));
-  totalSafeCells = rows * cols - mines;
-  revealedCount = 0;
-
-  generateBoard();
-});
-
-function generateBoard() {
-  $('#game-board').empty();
-  $('#game-board').css('grid-template-columns', `repeat(${cols}, 30px)`);
-
+function createBoard(rows, cols, mines) {
   board = [];
-  for (let r = 0; r < rows; r++) {
-    board[r] = [];
-    for (let c = 0; c < cols; c++) {
-      board[r][c] = { mine: false, revealed: false, count: 0 };
-      const cell = $('<div class="cell"></div>');
-      cell.attr('data-row', r).attr('data-col', c);
-      $('#game-board').append(cell);
+  for (let i = 0; i < rows; i++) {
+    board.push([]);
+    for (let j = 0; j < cols; j++) {
+      board[i].push({ mine: false, revealed: false, count: 0 });
     }
   }
 
-  // Gán mìn
   let placed = 0;
   while (placed < mines) {
     let r = Math.floor(Math.random() * rows);
@@ -40,95 +25,153 @@ function generateBoard() {
     }
   }
 
-  // Tính số mìn xung quanh
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (!board[r][c].mine) {
-        board[r][c].count = countMinesAround(r, c);
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      if (!board[i][j].mine) {
+        board[i][j].count = countAdjacentMines(i, j, rows, cols);
       }
     }
   }
-
-  $('.cell').on('click', handleClick);
 }
 
-function countMinesAround(r, c) {
+function countAdjacentMines(i, j, rows, cols) {
   let count = 0;
-  for (let i = -1; i <= 1; i++) {
-    for (let j = -1; j <= 1; j++) {
-      let nr = r + i, nc = c + j;
-      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && board[nr][nc].mine) {
-        count++;
-      }
+  for (let x = -1; x <= 1; x++) {
+    for (let y = -1; y <= 1; y++) {
+      let ni = i + x, nj = j + y;
+      if (ni >= 0 && ni < rows && nj >= 0 && nj < cols && board[ni][nj].mine) count++;
     }
   }
   return count;
 }
 
-function handleClick() {
-  let r = $(this).data('row');
-  let c = $(this).data('col');
-  let cellData = board[r][c];
-  if (cellData.revealed) return;
+function renderBoard(rows, cols) {
+  const boardEl = $('#game-board');
+  boardEl.empty();
+  boardEl.css('grid-template-columns', `repeat(${cols}, 30px)`);
 
-  cellData.revealed = true;
-  $(this).addClass('revealed');
-
-  if (cellData.mine) {
-    $(this).addClass('mine').text('💣');
-    alert('Bạn thua!');
-    $('.cell').off('click');
-    return;
-  }
-
-  revealedCount++;
-  if (cellData.count > 0) {
-    $(this).text(cellData.count);
-  } else {
-    $(this).text('');
-    revealAround(r, c);
-  }
-
-  if (revealedCount === totalSafeCells) {
-    alert('Bạn thắng!');
-    saveScore();
-    autoUpgrade();
-  }
-}
-
-function revealAround(r, c) {
-  for (let i = -1; i <= 1; i++) {
-    for (let j = -1; j <= 1; j++) {
-      let nr = r + i, nc = c + j;
-      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && !board[nr][nc].revealed) {
-        $(`.cell[data-row=${nr}][data-col=${nc}]`).trigger('click');
-      }
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      const cell = $('<div></div>').addClass('cell');
+      cell.attr('data-row', i);
+      cell.attr('data-col', j);
+      boardEl.append(cell);
     }
   }
 }
 
-// Lưu điểm vào localStorage
-function saveScore() {
-  let scores = JSON.parse(localStorage.getItem('scores') || '[]');
-  let name = prompt('Nhập tên bạn:');
-  scores.push({ name: name, score: totalSafeCells });
-  scores.sort((a, b) => b.score - a.score);
-  scores = scores.slice(0, 10);
-  localStorage.setItem('scores', JSON.stringify(scores));
-  updateScoreboard();
+function revealCell(i, j, rows, cols) {
+  if (board[i][j].revealed || gameOver) return;
+
+  const cellEl = $(`.cell[data-row=${i}][data-col=${j}]`);
+  board[i][j].revealed = true;
+  cellEl.addClass('revealed');
+
+  if (board[i][j].mine) {
+    cellEl.addClass('mine');
+    gameOver = true;
+    clearInterval(timerInterval);
+    playSound("lose-sound");
+    alert('💥 Bạn thua rồi!');
+    return;
+  }
+
+  if (board[i][j].count > 0) {
+    cellEl.text(board[i][j].count);
+  } else {
+    for (let x = -1; x <= 1; x++) {
+      for (let y = -1; y <= 1; y++) {
+        let ni = i + x, nj = j + y;
+        if (ni >= 0 && ni < rows && nj >= 0 && nj < cols) {
+          revealCell(ni, nj, rows, cols);
+        }
+      }
+    }
+  }
+
+  checkWin(rows, cols);
 }
 
-function updateScoreboard() {
-  let scores = JSON.parse(localStorage.getItem('scores') || '[]');
-  $('#top-scores').empty();
-  scores.forEach(s => {
-    $('#top-scores').append(`<li>${s.name}: ${s.score}</li>`);
-  });
-}
-
-// Tự nâng cấp cấp độ
-function autoUpgrade() {
-  if (level < 3) {
-    $('#level').val(level + 1);
+function checkWin(rows, cols) {
+  let revealed = 0;
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      if (board[i][j].revealed) revealed++;
+    }
+  }
+  if (revealed === rows * cols - levelMines[currentLevel]) {
+    gameOver = true;
+    clearInterval(timerInterval);
+    playSound("win-sound");
+    alert('🎉 Bạn thắng rồi!');
+    saveScore(timer);
+    currentLevel = Math.min(currentLevel + 1, 3);
   }
 }
+
+function saveScore(score) {
+  let scores = JSON.parse(localStorage.getItem('scores')) || [];
+  scores.push(score);
+  scores.sort((a, b) => a - b);
+  scores = scores.slice(0, 10);
+  localStorage.setItem('scores', JSON.stringify(scores));
+  renderScores();
+}
+
+function renderScores() {
+  const list = $('#top-scores');
+  list.empty();
+  const scores = JSON.parse(localStorage.getItem('scores')) || [];
+  scores.forEach((s, i) => list.append(`<li>${i + 1}. ${s} giây</li>`));
+}
+
+function startTimer() {
+  timer = 0;
+  $('#timer').text(timer);
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    timer++;
+    $('#timer').text(timer);
+  }, 1000);
+}
+
+function applyTheme() {
+  document.documentElement.style.setProperty('--cell-unrevealed', $('#color-unrevealed').val());
+  document.documentElement.style.setProperty('--cell-revealed', $('#color-revealed').val());
+  document.documentElement.style.setProperty('--cell-mine', $('#color-mine').val());
+  document.documentElement.style.setProperty('--cell-border', $('#cell-border').val());
+}
+
+function playSound(id) {
+  const sound = document.getElementById(id);
+  if (sound) {
+    sound.pause();
+    sound.currentTime = 0;
+    sound.play().catch(e => console.warn("Không phát được âm thanh:", e));
+  }
+}
+
+$('#start').click(() => {
+  const rows = parseInt($('#rows').val());
+  const cols = parseInt($('#cols').val());
+  currentLevel = parseInt($('#level').val());
+  const mines = levelMines[currentLevel];
+
+  createBoard(rows, cols, mines);
+  renderBoard(rows, cols);
+  startTimer();
+  gameOver = false;
+});
+
+$('#game-board').on('click', '.cell', function () {
+  const i = parseInt($(this).attr('data-row'));
+  const j = parseInt($(this).attr('data-col'));
+  revealCell(i, j, board.length, board[0].length);
+});
+
+$('#apply-theme').click(applyTheme);
+
+$(document).ready(() => {
+  renderScores();
+  applyTheme();
+});
