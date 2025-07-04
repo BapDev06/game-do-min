@@ -14,6 +14,10 @@
     <div class="col-md-6">
       <h5>Cài đặt bàn cờ</h5>
       <div class="form-group mb-2">
+        <label>Tên người chơi:</label>
+        <input type="text" id="player-name" class="form-control" placeholder="Nhập tên..." />
+      </div>
+      <div class="form-group mb-2">
         <label>Chiều ngang:</label>
         <input type="number" id="cols" class="form-control" value="8" />
       </div>
@@ -29,7 +33,9 @@
           <option value="3">Khó</option>
         </select>
       </div>
-      <button id="start" class="btn btn-primary">Bắt đầu chơi</button>
+      <button id="start" class="btn btn-primary me-2">Bắt đầu chơi</button>
+      <button id="restart" class="btn btn-warning me-2">Chơi lại</button>
+      <button id="reset-scores" class="btn btn-danger">Xoá điểm</button>
       <div class="mt-3">
         <h5>⏱️ Thời gian: <span id="timer">0</span> giây</h5>
       </div>
@@ -64,7 +70,6 @@
     <ol id="top-scores"></ol>
   </div>
 
-  <!-- Âm thanh -->
   <audio id="win-sound" preload="auto">
     <source src="https://www.soundjay.com/button/sounds/button-4.mp3" type="audio/mpeg">
   </audio>

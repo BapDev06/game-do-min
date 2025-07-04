@@ -28,17 +28,43 @@ body {
   cursor: pointer;
   user-select: none;
   opacity: 1;
-  transition: opacity 0.3s ease;
+  transition: background-color 0.3s, opacity 0.3s ease;
 }
 
 .cell.revealed {
   background-color: var(--cell-revealed);
   cursor: default;
-  opacity: 0.7;
+  opacity: 0.8;
+  animation: fadeIn 0.3s ease;
 }
 
 .cell.mine {
   background-color: var(--cell-mine);
+  background-image: url('https://cdn-icons-png.flaticon.com/512/56/56889.png');
+  background-size: cover;
+  background-position: center;
+}
+
+.cell.flagged {
+  background-color: #ffd700;
+  background-image: url('https://cdn-icons-png.flaticon.com/512/32/32339.png');
+  background-size: 20px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 768px) {
+  .cell {
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+    line-height: 24px;
+  }
 }
 
 #scoreboard ol {
@@ -46,3 +72,6 @@ body {
   text-align: left;
 }
 
+button {
+  margin-bottom: 5px;
+}
